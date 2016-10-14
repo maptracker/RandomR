@@ -1,3 +1,6 @@
+## Quickly source this code:
+## source("https://github.com/maptracker/RandomR/raw/master/RefClassHeadaches.R")
+
 hr <- paste(rep("- ", 20), collapse = "")
 hr <- paste("\n", hr)
 
