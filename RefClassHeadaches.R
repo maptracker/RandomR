@@ -1,157 +1,115 @@
 ## Quickly source this code:
 ## source("https://github.com/maptracker/RandomR/raw/master/RefClassHeadaches.R")
 
-hr <- paste(rep("- ", 20), collapse = "")
-hr <- paste("\n", hr)
+## The objects below have just two functions, one of which calls the
+## other. The challenge is understanding the conditions needed for the
+## called function to be "visible" to the calling one.
 
-message(hr)
-message("Trying to comprehend object methods in Reference Class objects")
-message(hr)
+## If the object is not set up properly, the calling function can not
+## find it, and the following message will be thrown:
+## could not find function "mult3"
 
-bar <- setRefClass("bar",fields = list( x = "integer"))
-## This will not work
-bar$methods(
-    initialize = function(..., x = 12L) {
-        ## We have the "right" class here:
-        message(.self$show())
-        message("About to have an error")
-        levelOne("Inside Init")
-        message("  I never get here!")
-        callSuper(..., x = x )
+## When a class is working, it will print:
+## Class <nameOfClass> | in 7 | out 21
+
+## Thanks to John Chambers (ReferenceClass author) for helping out with this!
+
+## Global functions to make the code a bit more readable:
+globalMult3 <- function (x) x * 3
+globalPrint <- function (x) message(sprintf("  Class %s | in %s | out %s",
+                                            class(.self), x, mult3(x)))
+## A try() block to aid in evaluation and reporting of each class
+tryClass    <- function (cName) {
+    outcome <- "Failure"
+    try({
+        message(sprintf("%s\n%s : %s (class=%s)", hr, Res, desc, cName))
+        tmp <- new(cName)    # Make a new cName object
+        tmp$printMult3( 7 )  # Try out the printMult3 method
+        outcome <- "Success" # Will only evaluate if no errors above
     })
-## Shouldn't the method below "be available" to the object?
-bar$methods( levelOne = function ( msg = "Hi") {
-                message("bar$levelOne() sez: ",msg) })
-try ({
-    if (exists("b")) rm(b)
-    b <- bar()
-    message("Object was not created, we will never get here")
-    b$levelOne("My L1 bar Message")
+    message("  ", outcome)
+}
+
+message("\n\n\n")
+hr <- paste(rep("- ", 30), collapse = "") # Separator text
+
+## Different scenarios follow:
+## Res   <- execution result
+## desc  <- brief description of the test
+## cName <- class name, as string
+
+## ----------------------------
+Res   <- "Success"
+desc  <- "Define both methods in a single call to setRefClass()"
+cName <- "singleDefinition"
+singleDefinition <-
+    setRefClass(cName, methods = list(printMult3 = globalPrint,
+                                      mult3      = globalMult3 ))
+tryClass("singleDefinition")
+
+## ----------------------------
+Res   <- "Success"
+desc  <- "Define both methods in a single object call to $methods()"
+cName <- "singleMethodsCall"
+singleMethodsCall <- setRefClass(cName)
+singleMethodsCall$methods(
+    printMult3 = globalPrint,
+    mult3      = globalMult3 
+)
+tryClass("singleMethodsCall")
+
+## ----------------------------
+Res   <- "Success"
+desc  <- "Define each method in its own $methods() call, mult3 first"
+cName <- "twoMethodsMultFirst"
+twoMethodsMultFirst <- setRefClass(cName)
+twoMethodsMultFirst$methods( mult3      = globalMult3 )
+twoMethodsMultFirst$methods( printMult3 = globalPrint )
+tryClass("twoMethodsMultFirst")
+
+## ----------------------------
+Res   <- "Failure"
+desc  <- "Define each method in its own $methods() call, printMult3 first"
+cName <- "twoMethodsPrintFirst"
+twoMethodsPrintFirst <- setRefClass(cName)
+twoMethodsPrintFirst$methods( printMult3 = globalPrint )
+twoMethodsPrintFirst$methods( mult3      = globalMult3 )
+tryClass("twoMethodsPrintFirst")
+
+## ----------------------------
+Res   <- "Success"
+desc  <- "A call to .self$mult3() seems to always work"
+cName <- "callWithSelf"
+callWithSelf <- setRefClass(cName)
+callWithSelf$methods( printMult3 = function(x) {
+    message(sprintf("  Class %s | in %s | out %s",
+                    class(.self), x, .self$mult3(x)))
 })
+callWithSelf$methods( mult3      = globalMult3 )
+tryClass("callWithSelf")
 
-
-message(hr)
-bip <- setRefClass("bip",fields = list( x = "integer"))
-## It does not help to callSuper() first
-bip$methods(
-    initialize = function(..., x = 12L) {
-        ## If we callSuper() first, the $x field gets properly set,
-        ## but we still do not have any knowledge of the $levelOne()
-        ## method
-        callSuper(..., x = x )
-        message(.self$show())
-        message("About to have an error")
-        levelOne("Inside Init")
-        message("  I never get here!")
-    })
-## Shouldn't the method below "be available" to the object?
-bip$methods( levelOne = function ( msg = "Hi") {
-                message("bip$levelOne() sez: ",msg) })
-try ({
-    if (exists("bp")) rm(bp)
-    bp <- bip()
-    message("Object was not created, we will never get here")
-    bp$levelOne("My L1 bip Message")
+## ----------------------------
+Res   <- "Success"
+desc  <- "If '.self$mult3' is called inside printMult3, it can then be found"
+cName <- "tickledPrintFirst"
+tickledPrintFirst <- setRefClass(cName)
+tickledPrintFirst$methods( printMult3 = function(x) {
+    .self$mult3 # Not called! just "looked at"
+    message(sprintf("  Class %s | in %s | out %s",
+                    class(.self), x, mult3(x)))
 })
+tickledPrintFirst$methods( mult3      = globalMult3 )
+tryClass("tickledPrintFirst")
 
-
-message(hr)
-bipk <- setRefClass("bipk",fields = list( x = "integer"))
-## Define levelOne() "before" initialize(), which makes everything
-## happy. The only change from the "bip" objects is that levelOne() is
-## a few lines higher in the source code.
-bipk$methods( levelOne = function ( msg = "Hi") {
-                message("bipk$levelOne() sez: ",msg) })
-bipk$methods(
-    initialize = function(..., x = 12L) {
-        message("For some reason defining the *object* method 'earlier' works!")
-        levelOne("Inside Init")
-        message("  Success!")
-        callSuper(..., x = x )
-    })
-try({
-    if (exists("bk")) rm(bk)
-    bk <- bipk()
-    bk$levelOne("My L1 bipk Message")
+## ----------------------------
+Res   <- "Failure"
+desc  <- "$usingMethods() 'alerts' one method to another, but does not seem to work in this context"
+cName <- "withUsingMethods"
+withUsingMethods <- setRefClass(cName)
+withUsingMethods$methods( printMult3 = function(x) {
+    usingMethods("mult3")
+    message(sprintf("  Class %s | in %s | out %s",
+                    class(.self), x, mult3(x)))
 })
-
-message(hr)
-## Defining the methods in a monolithic (and ugly) block works ok
-bork <- setRefClass("bork",
-  fields = list( x = "integer"),
-  methods = list(initialize = function(..., x = 12L) {
-                     message("Setting methods in setRefClass() works")
-                     levelOne("Inside Init")
-                     message("  Success!")
-                     callSuper(..., x = x )
-                 }, levelOne = function ( msg = "Hi") {
-                     message("bork$levelOne() sez: ",msg) })
-    )
-
-try({
-    if (exists("bo")) rm(bo)
-    bo <- bork()
-    bo$levelOne("My L1 bork Message")
-})
-
-message(hr)
-baz <- setRefClass("baz",fields = list( x = "integer"))
-## Directly referencing .self$levelOne() works
-baz$methods(
-    initialize = function(..., x = 12L) {
-        message("Explicit reference to '.self' is also ok")
-        .self$levelOne("Inside Init")
-        message("  Success!")
-        callSuper(..., x = x )
-    })
-baz$methods( levelOne = function ( msg = "Hi") {
-                message("baz$levelOne() sez: ",msg) })
-try({
-    if (exists("bz")) rm(bz)
-    bz <- baz()
-    bz$levelOne("My L1 baz Message")
-})
-
-message(hr)
-jaz <- setRefClass("jaz",fields = list( x = "integer"))
-## "Peeking at .self$levelOne (with no "()"!!) somehow "preloads" the
-## method, which somehow allows it to then be called without .self
-## ??!?
-jaz$methods(
-    initialize = function(..., x = 12L) {
-        message("Just *checking* the method allows it to be called w/o .self")
-        chk <- .self$levelOne   # Not actually "doing" anything, "just looking"
-        levelOne("Inside Init") # WHY DOES THIS NOW WORK??
-        message("  Success!")
-        callSuper(..., x = x )
-    })
-jaz$methods( levelOne = function ( msg = "Hi") {
-                message("jaz$levelOne() sez: ",msg) })
-try({
-    if (exists("jz")) rm(jz)
-    jz <- jaz()
-    jz$levelOne("My L1 jaz Message")
-})
-
-
-
-## Trying (and failing) to replicate issues happening outside of
-## initialize(). In a (much) more complex object, this paradigm is not
-## working at all (ie zz$levelTwo() is failing because $levelOne
-## appears to be suffering from the "apparently not yet defined"
-## problems reflected in the examples above)...
-
-message(hr)
-zaz <- setRefClass("zaz",fields = list( x = "integer"))
-zaz$methods( levelTwo = function ( msg = "Bye") {
-                levelOne(paste("From levelTwo:", msg)) })
-zaz$methods( levelOne = function ( msg = "Hi") {
-                message("zaz$levelOne() sez: ",msg) })
-try({
-    if (exists("zz")) rm(zz)
-    zz <- zaz()
-    zz$levelOne("My L1 zaz Message")
-    zz$levelTwo("My L2 zaz Message")
-})
-
-message(hr)
+withUsingMethods$methods( mult3      = globalMult3 )
+tryClass("withUsingMethods")
