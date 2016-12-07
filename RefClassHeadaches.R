@@ -113,3 +113,38 @@ withUsingMethods$methods( printMult3 = function(x) {
 })
 withUsingMethods$methods( mult3      = globalMult3 )
 tryClass("withUsingMethods")
+
+## ----------------------------
+if (require("data.table")) {
+    ## data.table is itself a reference-based package, with objects
+    ## being handled by reference rather than lexically. I have
+    ## encountered some problems trying to use data.table objects in
+    ## RefClass fields. In particular, the copy() method does not seem
+    ## to generate a 'clean' break between the original object and the
+    ## copy. My guess is that behind-the-scenes C data structures
+    ## aren't recognizing each other between the RefClass/data.table
+    ## packages.
+
+    ## This use case may be stretching the pass-by-reference paradigm
+    ## too far for lexically-minded R?
+
+    message("Generating a 'stand-alone' data.table, copying it, adding column")
+    simpleDT <- data.table(x=1:3, y=letters[4:6]) # 2x3 DT
+    copyDT   <- copy(simpleDT)
+    copyDT[ , z := 7:9 ] # Add a third column by reference
+    print(copyDT)
+    
+    message("Generating a DT stored in a field, copying it outside the object, adding a column")
+    cName <- "unhappyDataTable"
+    unhappyDataTable <- setRefClass(cName, fields = list( DT = 'data.table' ))
+    unhappyDataTable$methods( copydt = function() { copy( DT ) } )
+    udt <- new(cName)
+    udt$DT <- data.table(x=1:3, y=letters[4:6]) # Same table as above
+    dtCopy <- udt$copy()
+    message("Showing the copied DT - it is still associated as a field of the RefClass object")
+    print(dtCopy)
+    message("It is also not visible in the tables() call for this environment - perhaps this is expected?")
+    tables()
+    message("Attempt to add a new column fails with odd error")
+    dtCopy[ , z := 7:9 ]
+}
