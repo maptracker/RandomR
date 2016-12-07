@@ -129,6 +129,8 @@ if (require("data.table")) {
     ## This use case may be stretching the pass-by-reference paradigm
     ## too far for lexically-minded R?
 
+    message("## All of the code below should work fine, up until the last few lines...\n\n")
+    
     message("## Generating a 'stand-alone' data.table, copying it, adding column")
     simpleDT   <- data.table(x=1:3, y=letters[4:6]) # 3x2 DT
     simpleCopy <- copy(simpleDT)
@@ -149,18 +151,23 @@ if (require("data.table")) {
     s3Copy <- s3DT$copy()
     s3Copy[ , z := 7:9 ] # Add a third column by reference
     print(s3Copy)
+
+    message("## Listing the data.tables currently in the environment:")
+    tables()
     
-    message("## Generating a DT stored in a RefClass field, copying it outside the object, printing it...")
-    message("## No complaint, but it appears to still be associated as a field of the RefClass object ")
-    cName <- "unhappyDataTable"
+    message("## Generating a DT stored in a RefClass field")
+     cName <- "unhappyDataTable"
     unhappyDataTable <- setRefClass(cName, fields = list( DT = 'data.table' ))
     unhappyDataTable$methods( copydt = function() { copy( DT ) } )
     udt <- new(cName)
     udt$DT <- data.table(x=1:3, y=letters[4:6]) # Same table as above
+
+    message("\n\n## Strangeness starts here - Generating and printing a copy of the DT")
+    message("## The copy appears to still be associated as a field of the RefClass object")
+    message("## It ('refClassCopy') is also not visible in the tables() call for this environment - perhaps this is expected? But the S3 copy was ...")
     refClassCopy <- udt$copy()
     print(refClassCopy)
-    message("## It ('refClassCopy') is also not visible in the tables() call for this environment - perhaps this is expected?")
     tables()
-    message("## Attempt to add a new column to the refClassCopy fails with odd error:")
+    message("## Attempt to add a new column to the refClassCopy fails with odd class-check error:")
     refClassCopy[ , z := 7:9 ]
 }
