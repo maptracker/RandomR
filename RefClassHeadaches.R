@@ -129,7 +129,7 @@ if (require("data.table")) {
     ## too far for lexically-minded R?
 
     message("Generating a 'stand-alone' data.table, copying it, adding column")
-    simpleDT <- data.table(x=1:3, y=letters[4:6]) # 2x3 DT
+    simpleDT <- data.table(x=1:3, y=letters[4:6]) # 3x2 DT
     copyDT   <- copy(simpleDT)
     copyDT[ , z := 7:9 ] # Add a third column by reference
     print(copyDT)
