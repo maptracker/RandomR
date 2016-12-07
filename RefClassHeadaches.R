@@ -129,10 +129,10 @@ if (require("data.table")) {
     ## too far for lexically-minded R?
 
     message("Generating a 'stand-alone' data.table, copying it, adding column")
-    simpleDT <- data.table(x=1:3, y=letters[4:6]) # 3x2 DT
-    copyDT   <- copy(simpleDT)
-    copyDT[ , z := 7:9 ] # Add a third column by reference
-    print(copyDT)
+    simpleDT   <- data.table(x=1:3, y=letters[4:6]) # 3x2 DT
+    simpleCopy <- copy(simpleDT)
+    simpleCopy[ , z := 7:9 ] # Add a third column by reference
+    print(simpleCopy)
     
     message("Generating a DT stored in a field, copying it outside the object, adding a column")
     cName <- "unhappyDataTable"
@@ -140,11 +140,11 @@ if (require("data.table")) {
     unhappyDataTable$methods( copydt = function() { copy( DT ) } )
     udt <- new(cName)
     udt$DT <- data.table(x=1:3, y=letters[4:6]) # Same table as above
-    dtCopy <- udt$copy()
+    refClassCopy <- udt$copy()
     message("Showing the copied DT - it is still associated as a field of the RefClass object")
-    print(dtCopy)
-    message("It is also not visible in the tables() call for this environment - perhaps this is expected?")
+    print(refClassCopy)
+    message("It ('refClassCopy') is also not visible in the tables() call for this environment - perhaps this is expected?")
     tables()
     message("Attempt to add a new column fails with odd error")
-    dtCopy[ , z := 7:9 ]
+    refClassCopy[ , z := 7:9 ]
 }
